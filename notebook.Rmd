@@ -1,0 +1,74 @@
+---
+title: "Quoting and Unqoting functions"
+output: html_notebook
+---
+
+```{r enquo()}
+filter_count <- function(data, filter_1, f1var, filter_2, f2var, count_var){
+  filter_1 <- enquo(filter_1)
+  filter_2 <- enquo(filter_2)
+  count_var <- enquo(count_var)
+  
+  data %>% 
+    select(!!filter_1, !!filter_2, !!count_var) %>% 
+    filter(!!filter_1 == f1var, !!filter_2 == f2var) %>% 
+    count(!!count_var)
+}
+filter_count_2 <- function(data, filter_1, f1var, filter_2, f2var, count_var){
+  filter_1 <- enquo(filter_1)
+  filter_2 <- enquo(filter_2)
+  count_var <- enquo(count_var)
+  
+  data %>% 
+    filter(!!filter_1 == f1var) %>% 
+    group_by(!!filter_2) %>% 
+    summarise(mean = mean(!!count_var), num = n())
+}
+
+
+ filter_count(diamonds, carat, 0.26, cut, "Very Good", color)
+ diamonds %>% 
+  filter(carat == 0.26, cut == "Very Good") %>% count(color)
+
+ 
+ filter_count_2(diamonds, carat, 0.26, cut, "Very Good", price)
+
+  filter_count_2(mtcars, cyl, 4, gear, NULL, mpg)
+  mtcars %>% 
+    filter(cyl == 4) %>% 
+    group_by(gear) %>% 
+    summarise(mean = mean(mpg), num = n())
+   
+   
+table(gear)
+gear <- mtcars$gear 
+unique(diamonds$cut)
+```
+
+
+```{r qq_show}
+qq_show(
+  
+)
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
