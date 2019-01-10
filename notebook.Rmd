@@ -3,7 +3,7 @@ title: "Quoting and Unqoting functions"
 output: html_notebook
 ---
 
-```{r enquo()}
+```{r enquo(), sym()}
 filter_count <- function(data, filter_1, f1var, filter_2, f2var, count_var){
   filter_1 <- enquo(filter_1)
   filter_2 <- enquo(filter_2)
@@ -14,6 +14,7 @@ filter_count <- function(data, filter_1, f1var, filter_2, f2var, count_var){
     filter(!!filter_1 == f1var, !!filter_2 == f2var) %>% 
     count(!!count_var)
 }
+
 filter_count_2 <- function(data, filter_1, f1var, filter_2, f2var, count_var){
   filter_1 <- enquo(filter_1)
   filter_2 <- enquo(filter_2)
@@ -25,45 +26,213 @@ filter_count_2 <- function(data, filter_1, f1var, filter_2, f2var, count_var){
     summarise(mean = mean(!!count_var), num = n())
 }
 
+filter_count_2_sym <- function(data, filter_1, f1var, filter_2, f2var, count_var){
+  filter_1 <- sym(filter_1)
+  filter_2 <- sym(filter_2)
+  count_var <- sym(count_var)
+  
+  data %>% 
+    filter(!!filter_1 == f1var) %>% 
+    group_by(!!filter_2) %>% 
+    summarise(mean = mean(!!count_var), num = n())
+}
 
+{
  filter_count(diamonds, carat, 0.26, cut, "Very Good", color)
  diamonds %>% 
   filter(carat == 0.26, cut == "Very Good") %>% count(color)
+} # filter_count
 
- 
- filter_count_2(diamonds, carat, 0.26, cut, "Very Good", price)
+{
+   filter_count_2(diamonds, carat, 0.26, cut, "Very Good", price)
 
   filter_count_2(mtcars, cyl, 4, gear, NULL, mpg)
+  
+  filter_count_2_sym(mtcars, "cyl", 4, "gear", NULL, "mpg")
+  
   mtcars %>% 
     filter(cyl == 4) %>% 
     group_by(gear) %>% 
     summarise(mean = mean(mpg), num = n())
+} # filter_count_2
    
-   
-table(gear)
-gear <- mtcars$gear 
-unique(diamonds$cut)
+
 ```
 
 
 ```{r qq_show}
+
+vars <- list(quote(cyl), quote(am))
+
+# returns list of qousures
 qq_show(
-  
+  group_by(!!vars)
 )
+
+# returns objects stored in quosures
+qq_show(
+  group_by(!!!vars)
+)
+
+
 ```
 
 
-```{r}
+```{r multiple args}
+# selecter <- function(data, ...){
+#   items <- enquos(...)
+#   data %>%
+#     select(vars(items[[1]]), vars(items[[2]]))
+#   # items[[1]] %>% typeof()
+# }
+# 
+# selecter(diamonds, c("cut", "carat"))
 
+materialize <- function(data, ...){
+  dots <- list(...)
+  dots
+}
+
+materialize(mtcars, 1 + 2, 2 == (1+1))
+
+# Observation, could be used to check if two conditions are true or false 
+# user authentication, pro account or nah
+
+capture <- function(data, ...){
+  dots <- enquos(...)
+  dots
+}
+
+capture(mtcars, 1 + 2, 2 == (1+1))
+
+forwardee <- function(...){
+    list(...)
+  }
+
+forward <- function(data, ...){
+  forwardee(...)
+}
+
+forward(mtcars, "this", "that")
 ```
 
 
+```{r user_auth}
+user_auth <- function(data, ...){
+  dots <- list(...)
+  # dots[[1]] should be username
+  # dots[[2]] should be password
+  # dots[[3]] should be password entered by user
+  # dots[[4]] should be account type
+  
+  ifelse(dots[[2]] == dots[[3]],
+         ifelse(
+           dots[[4]] == "PRO",
+           "Account type pro",
+           "not pro"
+         ), 
+         "User Authentication Failed"
+         )
+}
+
+user_auth(data = diamonds, "edgar", "nabs", "nabs", "basic")
+user_auth(data = diamonds, "edgar", "nabs", "nabs", "PRO")
+user_auth(data = diamonds, "edgar", "nabs", "nabs1", "basic")
+
+```
+
+```{r user_auth_2 select_user}
+user_data <- data.frame(
+  username = c("jim123", "dani34", "eddy95"),
+  password = rep(NA, 3),
+  acc_type = sample(c("PRO", "Basic"), 3, T, c(0.8, 0.2))
+)
+
+user_data <- user_data %>% mutate(password = paste0(username, "20"))
+
+user_data
+
+select_user <- function(data, username_typed, password_typed){
+  data <- data %>% 
+            filter(username == username_typed)
+  ifelse(
+    data$password == password_typed,
+    # "Correct pass"
+    ifelse(
+      data$acc_type == "PRO",
+      "Render PRO Settings",
+      "Render Basic Settings"
+    ),
+    "Wrong pass"
+  )
+}
+
+select_user(user_data, "eddy95", "eddy952")
+select_user(user_data, "eddy95", "eddy9520")
+select_user(user_data, "dani34", "dani3420")
+```
 
 
+```{r grouped_mean}
+grouped_mean <- function(.data, .summary_var, ...) {
+  .summary_var <- enquo(.summary_var)
+
+  .data %>%
+    group_by(...) %>%
+    summarise(mean = mean(!!.summary_var))
+}
+
+grouped_mean_2 <- function(.data, .summary_var, ...) {
+  .summary_var <- enquo(.summary_var)
+  .group_vars <- enquos(...)
+
+  .data %>%
+    group_by(!!!.group_vars) %>%
+    summarise(mean = mean(!!.summary_var))
+}
+
+grouped_data <- list(Cars = grouped_mean(mtcars, disp, cyl, am),
+Diamonds = grouped_mean(diamonds, price, color, clarity) %>% 
+  set_names(c("Color of Diamonds", "Clarity", "Average Price"))
+)
+
+grouped_data
+
+grouped_data_2 <- list(Cars = grouped_mean_2(mtcars, disp, cyl, am),
+Diamonds = grouped_mean_2(diamonds, price, color, clarity) %>% 
+  set_names(c("Color of Diamonds", "Clarity", "Average Price"))
+)
+
+grouped_data_2
+```
+
+```{r quo_name()}
+var1 <- quote(height)
+var2 <- quote(mean(height))
+
+quo_name(var1)
+#> [1] "height"
+quo_name(var2)
+#> [1] "mean(height)"
+```
 
 
+```{r enquos(.named = T)}
+args_names <- function(...) {
+  vars <- enquos(..., .named = TRUE)
+  names(vars)
+}
 
+args_names(mean(height), weight)
+#> [1] "mean(height)" "weight"
 
+args_names(avg = mean(height), weight)
+#> [1] "avg"    "weight"
+
+nm <- "Mickey"
+args_names(!!nm := 1)
+#> [1] "Mickey"
+```
 
 
 
